@@ -1,0 +1,80 @@
+#kite autologin and access token
+from kiteconnect import KiteConnect
+from selenium import webdriver
+from urllib.parse import urlparse, parse_qs
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+import time
+import pyotp
+
+api_key = "****5ldjwoudy02l"
+api_secret = "******qheymzkhkjmaifbgn6v18og84b"
+client_ID="******"
+password="*********"
+TOTP_Secret="****************************"
+
+kite = KiteConnect(api_key=api_key) 
+login_url=(kite.login_url())
+
+login_url = kite.login_url()
+print("[+] Opening login URL:", login_url)
+
+options = Options()
+options.add_argument("--disable-infobars")
+options.add_argument("--disable-extensions")
+options.add_argument("--start-maximized")
+
+driver = webdriver.Chrome(options=options)
+
+driver.get(login_url)
+time.sleep(4)
+
+#log in process with client ID and Password
+print("[+] Please log in and authorize the application. Waiting for redirection...")
+driver.find_element("id","userid").send_keys(str(client_ID))
+driver.find_element("id","password").send_keys(str(password))
+#driver.find_element("id","sign_in_submit_btn").click()
+driver.find_element(By.TAG_NAME, 'button').click()
+time.sleep(5)
+#TOTP Login Process
+
+totp= pyotp.TOTP(str(TOTP_Secret))
+latest=totp.now()
+driver.find_element(By.TAG_NAME,"input").send_keys(latest)
+time.sleep(3)
+
+while "request_token" not in driver.current_url:
+    time.sleep(1)
+
+current_url = driver.current_url
+
+parsed_url = urlparse(current_url)
+query_params = parse_qs(parsed_url.query)
+request_token = query_params.get('request_token', [''])[0]
+
+print("[+] Request Token:", request_token)
+
+
+try:
+    request_token = request_token
+
+    data = kite.generate_session(request_token,api_secret)
+    access_token = data.get('access_token')
+    print(access_token)
+    kite.set_access_token(data["access_token"])
+
+    print(f"\t[+] Welcome : {kite.profile()['user_name']}")
+    loggedIn = True
+except Exception as e:
+    print("Error while login : ",e)
+
+
+
+
+
+
+
+
+
+
+
